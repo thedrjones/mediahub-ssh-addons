@@ -1,6 +1,8 @@
 # mediahub-ssh-addons
 This is a handful of files to add to a Linksys MediaHub Root filesystem to allow access to the device via SSH. Includes a static pre-compiled version of [dropbear](https://matt.ucc.asn.au/dropbear/dropbear.html) that is suitable for the device. I've made these available should anyone else decide to have a play with their device for education purposes. Obviously you should not be using hacked-up devices in production. (In fact, given how easy it is to break into, I wouldn't use one in production at all).
 
+I mainly wanted to do this because I like to keep my NAS devices somewhere out of the way, I don't want to be attempting to use 3 wire serial connections to be able to experiment with my own hardware's operarting systems.
+
 I've also included my special extra line in http://mediahub/fw/rokko_debug.php that I originally used to start hacking on there as well as a *slightly* improved smb.conf generator which brings my transfers from 7MB/sec to 10MB/sec (your mileage may vary).
 
 ## SSH Installation
@@ -8,7 +10,7 @@ Pop your (fresh ideally, but shouldn't matter) disk or disks into the MediaHub a
 
 Once your disks are set up and the MediaHub has booted, place the disk or disks into your Linux machine and mount the second partition (e.g. sdb2) on each disk.
 
-The files you will need to copy over are below, all the `/bin` and `/sbin` files, apart from `/bin/dropbearmulti` are symlinks to /bin/dropbearmulti.
+The files you will need to copy over are below. Most of the `/bin` and `/sbin` files, apart from `/bin/dropbearmulti` are symlinks to /bin/dropbearmulti.
 
 * `/etc/init.d/*`
 * `/bin/*`
