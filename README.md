@@ -13,8 +13,17 @@ Once your disks are set up and the MediaHub has booted, place the disk or disks 
 The files you will need to copy over are below. Most of the `/bin` and `/sbin` files, apart from `/bin/dropbearmulti` are symlinks to /bin/dropbearmulti.
 
 * `/etc/init.d/*`
-* `/bin/*`
-* `/sbin/*`
+* `/bin/dropbearmulti`
+
+Now once these files are copied, you can then create the symbolic links to be able to run them. 
+
+First in the bin folder, link the main executable to the the utility names:
+* `ln -s dropbearmulti ./dbclient`
+* `ln -s dropbearmulti ./dropbearkey`
+* `ln -s dropbearmulti ./dropbearconvert`
+
+Now in the sbin folder (note this may appear as a broken symlink in your Linux machine mount, but on the MediaHub it'll be fine):
+* `ln -s /bin/dropbearmulti ./dropbear`
 
 ### SSH secrets
 You should probably generate your own secrets for /etc/dropbear on your host machine before copying them over, install dropbear on your Linux machine using your package installation method of choice, then use the below commands to generate them before copying over to the disks. My MediaHub is never going to be on the public internet, so I don't care if you know mine - hence they have been committed in case you don't want to install dropbear just to generate keys. 
@@ -26,7 +35,7 @@ You should probably generate your own secrets for /etc/dropbear on your host mac
 The root password on the MediaHub is `giveit2me` [see this thread](https://forum.nas-central.org/viewtopic.php?f=26&t=2059), unless you've already done some hacking to stop it being reset every boot. 
 
 ### SCP
-SCP does work on this dropbear config to copy files to the device from another PC, but any files you copy in as root will not always be usable via other methods such as Samba or FTP. I believe you should be able to `ln -s /bin/dropbearmulti /bin/scp` on the device via a SSH connection to allow it work the other way, if that's what you want.
+SCP does work on this dropbear config to copy files to the device from another PC, but any files you copy in as root will not always be usable via other methods such as Samba or FTP. If you want to use SCP to copy from the device to your PC, I believe you should be able to `ln -s /bin/dropbearmulti /bin/scp` on the device to allow scp to be used there.
 
 ## Bonus Files
 ### func_smb.conf
