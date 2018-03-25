@@ -17,13 +17,16 @@ The files you will need to copy over are below. Most of the `/bin` and `/sbin` f
 * `/sbin/*`
 
 ### SSH secrets
-You should probably generate your own secrets for /etc/dropbear on your host machine before copying them over, installl dropbear using your package installation method of choice, then use the below commands. My MediaHub is never going to be on the public internet, so I don't care if you know them!
-* `dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key`
-* `dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key`
-* `dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key`
+You should probably generate your own secrets for /etc/dropbear on your host machine before copying them over, install dropbear on your Linux machine using your package installation method of choice, then use the below commands to generate them before copying over to the disks. My MediaHub is never going to be on the public internet, so I don't care if you know mine - hence they have been committed in case you don't want to install dropbear just to generate keys. 
+* `dropbearkey -t dss -f etc/dropbear/dropbear_dss_host_key`
+* `dropbearkey -t rsa -f etc/dropbear/dropbear_rsa_host_key`
+* `dropbearkey -t ecdsa -f etc/dropbear/dropbear_ecdsa_host_key`
 
 ### Root Password
-The root password on the MediaHub is `giveit2me` [see this thread](https://forum.nas-central.org/viewtopic.php?f=26&t=2059). SCP does work on this dropbear config, but any files you copy in as root will not always be usable via other methods such as Samba or FTP.
+The root password on the MediaHub is `giveit2me` [see this thread](https://forum.nas-central.org/viewtopic.php?f=26&t=2059), unless you've already done some hacking to stop it being reset every boot. 
+
+### SCP
+SCP does work on this dropbear config to copy files to the device from another PC, but any files you copy in as root will not always be usable via other methods such as Samba or FTP. I believe you should be able to `ln -s /bin/dropbearmulti /bin/scp` on the device via a SSH connection to allow it work the other way, if that's what you want.
 
 ## Bonus Files
 ### func_smb.conf
