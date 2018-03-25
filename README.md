@@ -8,14 +8,21 @@ I've also included my special extra line in http://mediahub/fw/rokko_debug.php t
 ## SSH Installation
 Pop your (fresh ideally, but shouldn't matter) disk or disks into the MediaHub and allow the initial installation to finish - this can take a while. If you are using 2TB disks, I would recommend pre-partitioning them according to this [Linksys community thread](http://community.linksys.com/t5/Media-Hub/2TB-HDD-for-NMH305/td-p/571796).
 
-Once your disks are set up and the MediaHub has booted, place the disk or disks into your Linux machine and mount the second partition (e.g. sdb2) on each disk.
+Once your disks are set up and the MediaHub has booted for the first time to ensure it's installed the OS on the disks, power it off and place the disk or disks into your Linux machine and mount the second partition (e.g. sdb2) on each disk.
 
-The files you will need to copy over are below. Most of the `/bin` and `/sbin` files, apart from `/bin/dropbearmulti` are symlinks to /bin/dropbearmulti.
+The files you will need to copy over are below. Most of the `/bin` and `/sbin` files are symlinks to `/bin/dropbearmulti` to save file space, so we'll create them after.
 
-* `/etc/init.d/*`
-* `/bin/dropbearmulti`
+* `etc/init.d/*`
+* `bin/dropbearmulti`
 
-Now once these files are copied, you can then create the symbolic links to be able to run them. 
+### SSH secrets
+You should probably generate your own secrets for /etc/dropbear on your host machine before copying them over, install dropbear on your Linux machine using your package installation method of choice, then use the below commands to generate them before copying over to the disks. My MediaHub is never going to be on the public internet, so I don't care if you know mine - hence they have been committed in case you don't want to install dropbear just to generate keys. 
+* `dropbearkey -t dss -f etc/dropbear/dropbear_dss_host_key`
+* `dropbearkey -t rsa -f etc/dropbear/dropbear_rsa_host_key`
+* `dropbearkey -t ecdsa -f etc/dropbear/dropbear_ecdsa_host_key`
+
+### Symlinking dropbear utilities
+Once these files are copied, you can then create the symbolic links to be able to run them. 
 
 First in the bin folder, link the main executable to the the utility names:
 * `ln -s dropbearmulti ./dbclient`
@@ -25,17 +32,11 @@ First in the bin folder, link the main executable to the the utility names:
 Now in the sbin folder (note this may appear as a broken symlink in your Linux machine mount, but on the MediaHub it'll be fine):
 * `ln -s /bin/dropbearmulti ./dropbear`
 
-### SSH secrets
-You should probably generate your own secrets for /etc/dropbear on your host machine before copying them over, install dropbear on your Linux machine using your package installation method of choice, then use the below commands to generate them before copying over to the disks. My MediaHub is never going to be on the public internet, so I don't care if you know mine - hence they have been committed in case you don't want to install dropbear just to generate keys. 
-* `dropbearkey -t dss -f etc/dropbear/dropbear_dss_host_key`
-* `dropbearkey -t rsa -f etc/dropbear/dropbear_rsa_host_key`
-* `dropbearkey -t ecdsa -f etc/dropbear/dropbear_ecdsa_host_key`
+### SCP
+SCP does work on this dropbear config to copy files to the device from another PC, but any files you copy in as root will not always be usable via other methods such as Samba or FTP. If you want to use SCP to copy from the device to your PC, I believe you should be able to `ln -s /bin/dropbearmulti /bin/scp` on the device to allow scp to be used there.
 
 ### Root Password
 The root password on the MediaHub is `giveit2me` [see this thread](https://forum.nas-central.org/viewtopic.php?f=26&t=2059), unless you've already done some hacking to stop it being reset every boot. 
-
-### SCP
-SCP does work on this dropbear config to copy files to the device from another PC, but any files you copy in as root will not always be usable via other methods such as Samba or FTP. If you want to use SCP to copy from the device to your PC, I believe you should be able to `ln -s /bin/dropbearmulti /bin/scp` on the device to allow scp to be used there.
 
 ## Bonus Files
 ### func_smb.conf
