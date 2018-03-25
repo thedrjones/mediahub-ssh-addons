@@ -1,0 +1,123 @@
+#!/bin/php -f
+<?php
+/*
+    rc.bootup
+    part of FreeNAS (http://www.freenas.org)
+    Copyright (C) 2005-2006 Olivier Cochard <cochard@gmail.com>.
+    All rights reserved.
+
+    Based on m0n0wall (http://m0n0.ch/wall)
+    Copyright (C) 2003-2006 Manuel Kasper <mk@neon1.net>.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+    AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+    AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+*/
+
+    require_once("/etc/inc/globals.inc");
+
+    /* let the other functions know we're booting */
+    $g['booting'] = TRUE;
+    touch("{$g['varrun_path']}/booting");
+
+    /* parse the configuration and include all functions used below */
+    require_once("/etc/inc/func_config.inc");
+    require_once("/etc/inc/func_system.inc");
+    require_once("/etc/inc/func_lan_if.inc");
+    require_once("/etc/inc/func_disks.inc");
+    require_once("/etc/inc/func_smb.inc");
+    require_once("/etc/inc/func_cups.inc");
+    require_once("/etc/inc/func_ntp.inc");
+    require_once("/etc/inc/func_daemon.inc");
+    require_once("/etc/inc/func_sendmail.inc");
+    require_once("/etc/inc/func_sms.inc");
+
+    /* make hosts file */
+    sysfunc_hosts_generate();
+
+    /* set up our hostname */
+    sysfunc_hostname_configure();
+
+    /* create users passwd */
+//    userfunc_users_configure();
+
+    /* configure loopback interface */
+    sysfunc_loopback_configure();
+
+    /* set up LAN interface */
+    laniffunc_configure();
+
+    /* configure disk parameters */
+//    disksfunc_parameters_config();
+
+    /* start swap */
+//    sysfunc_swap_configure();
+
+    /* Mount the disks */
+//    disksfunc_mount_all();
+
+    /* sanity checks on config files(s) */
+    configfunc_sanity_check();
+    
+    /* start web server */
+    daemonfunc_webgui_start();
+
+    /* start the NTP client */
+    //    ntpfunc_daemon_start();
+    //echo "Starting NTP client... ";
+    //mwexec("/etc/init.d/ntp-client");
+
+    /* start CUPS service */
+  //  cupsfunc_daemon_start();
+    
+    /* start MRVLQOS daemon */
+//    daemonfunc_mrvlqos_start();
+    
+    /* start DROPBEAR SSH daemon */
+    daemonfunc_dropbear_start();
+    
+    /* start SAMBA service */
+    smbfunc_daemon_start();
+
+    /* start the SMS service */
+//    smsfunc_start();
+
+    /* start sendmail daemon */
+//    sendmailfunc_daemon_start();
+
+    /* start udev */
+//    daemonfunc_udev_start();
+    
+    /* start sync daemon */
+//    daemonfunc_syncaway_start();
+
+    /* start ssdp service */
+//    daemonfunc_ssdpd_start();
+
+    /* start Mediabolic service */
+//    daemonfunc_mediaserver_start();
+	
+	/* start zui upnp dmc */
+//	daemonfunc_zui_start();
+
+    /* done */
+    unlink("{$g['varrun_path']}/booting");
+?>

@@ -1,0 +1,214 @@
+#!/bin/sh
+# stefande: Customize based on boot type...
+NFSBOOT=`dmesg | grep "Kernel command line" | grep -o "/dev/nfs"`
+if [ ! -z "$NFSBOOT" ]; then
+	echo "NFS Boot detected...";
+fi
+SATABOOT=`dmesg | grep "Kernel command line" | grep -o "/dev/sd[a-z][0-9]"`
+if [ ! -z "$SATABOOT" ]; then
+	echo "SATA Boot detected...";
+fi
+INITRDBOOT=`dmesg | grep "Kernel command line" | grep -o "/dev/ram"`
+if [ ! -z "$INITRDBOOT" ]; then
+	echo "INITRD Boot detected...";
+fi
+
+mount -n -t proc none /proc
+mount -n -t sysfs none /sys
+mount -n -t tmpfs udev /dev -o size=100k
+
+mount -o remount,noatime,commit=9000 /
+
+sysctl -n -e -q -p /etc/sysctl.conf
+
+mknod -m 660 /dev/null c 1 3
+mknod -m 660 /dev/console c 5 1
+mknod -m 660 /dev/ttyS0 c 4 64
+
+echo " * Starting udev.." 
+echo " *  Using netlink for hotplug events.." 
+echo "" > /proc/sys/kernel/hotplug 
+echo " *  Starting udevd.." 
+/sbin/udevd --daemon 
+echo " *  Populating /dev with existing devices through uevents" 
+touch /dev/.udev_populate 
+/sbin/udevadm trigger --attr-match=dev
+echo " *  Letting udev process events" 
+/sbin/udevadm settle --timeout=60
+[ -d /dev/pts ] || mkdir -m 755 /dev/pts
+[ -c /dev/ptmx ] || mknod -m 666 /dev/ptmx c 5 2
+rm /dev/.udev_populate
+
+# Hack for now, need to figure out why udev doesn't triggering this..
+ROOT=$(cat /proc/cmdline  | grep root | awk '{print $1}' | awk -F = '{ print $2}')
+echo " *  Creating root link"
+ln -sf $ROOT /dev/root
+chown root:root /dev/root
+
+mount -t tmpfs none /var/log
+
+if [ ! -z $SATABOOT ]; then
+	echo " * Remounting root filesystem read-only"
+	mount -o remount,ro /
+	echo " * Checking root filesystem /dev/root"
+	/etc/init.d/checkfs $SATABOOT
+fi
+
+echo -e "* Checking local filesystems"
+/etc/init.d/checkfs /dev/md0
+
+echo " * Remounting root filesystem read-write"                 
+mount -o noatime,remount,rw /
+
+echo " * Wiping pid files"
+rm -rf /var/run/*
+
+echo " * Wiping tmp & lock files"
+rm -rf /var/tmp/*
+rm -rf /var/lock/*
+ln -sf /var/run/lock /var/lock
+
+echo " * Updating fstab..."
+/etc/init.d/do_fstab
+
+echo " * Enabling swap partition(s)"
+swapon -a
+if [[ $? -ne 0 ]]; then
+	echo -e "\t * Failed to mount swap partition(s)"
+fi
+
+echo " * Updating dynamic linker cache"
+ldconfig
+
+echo " * Loading kernel modules..."
+modprobe mod_nmh3xx
+HAS_LCD=`cat /proc/devices | grep -o nmh_lcd`
+if [ ! -z $HAS_LCD ]; then 
+	mknod /dev/nmh_lcd c `cat /proc/devices | grep nmh_lcd | awk '{ print $1 }'` 1
+fi
+mknod /dev/nmh_leds c `cat /proc/devices | grep nmh_leds | awk '{ print $1 }'` 1
+mknod /dev/nmh_buttons c `cat /proc/devices | grep nmh_buttons | awk '{ print $1 }'` 1
+mknod /dev/nmh_mem c `cat /proc/devices | grep nmh_mem | awk '{ print $1 }'` 1
+
+/sbin/fuji cmd=checkUBootUpdate
+/sbin/fuji cmd=rescueMe
+
+echo " * Starting md-event logger"
+mdadm --follow -f --program=/usr/spbin/tools/md-events --scan
+
+echo " * Starting syslogd"
+/sbin/syslogd && /sbin/klogd && dmesg -n 1
+
+echo " * Mounting local filesystems"
+mount -a -t nonfs,nonfs4,nosmbfs,nocifs,noncp,noncpfs,nocoda,noocfs2,nogfs 2>&1
+if [[ $? -ne 0 ]]; then
+	echo -e "\t * Failed to mount local filesystems"
+fi
+
+echo " * Making devices visible"
+ln -sf /mnt /share/media/devices
+
+echo " * Mounting /dev/pts"
+mount devpts /dev/pts -t devpts
+
+# config stuff
+touch /tmp/nas_conf_vltl.xml
+
+if [ -z $NFSBOOT ]; then
+	# give the if a bit of time to get on it's feet
+	ifconfig egiga0 up && sleep 3
+fi
+
+# yeah, I know...
+/etc/init.d/rc.bootup
+
+### LCD Stuff... ###
+# Now lcd agent runs also on NMH300
+#if [ ! -z $HAS_LCD ]; then
+	cd /usr/spbin/lcdagent
+	/bin/php lcdagent.php &
+	cd -
+#fi
+
+### start cron jobs
+echo " * starting cron daemon"
+/etc/init.d/crond start
+
+echo " * Starting system agent"
+/sbin/agent
+
+#if [ ! -x /usr/local/TwonkyVision/resources/twonkyicon-120x120.jpg ]; then
+	if [ ! -z $HAS_LCD ]; then
+		cp /usr/local/TwonkyVision/resources/nmh310/* /usr/local/TwonkyVision/resources
+	else
+		cp /usr/local/TwonkyVision/resources/nmh300/* /usr/local/TwonkyVision/resources
+	fi
+#fi
+
+echo " * Starting Network Services:"
+#/sbin/ssdpd -f /etc/conf/ssdpd.conf
+
+if [ -x /etc/init.d/sshd ]; then /etc/init.d/sshd start ; fi
+if [ -x /etc/init.d/rac ]; then /etc/init.d/rac start ; fi
+
+#mount -o rbind /share/media /ftp/upload
+# For Karl
+mount -o rbind /share /ftp/upload
+
+echo " * Checking for directories..."
+sh /usr/spbin/tools/mkshares_boot
+
+echo " * Changing owner ship of .system"
+chmod 700 /share/.system
+
+echo " * Making sure scaler cache folder exists"
+mkdir -p /share/.system/scalercache
+
+echo " * Making sure Twonky database dir exists"
+mkdir -p /share/.system/db
+
+/sbin/mDNSResponderPosix -f /etc/mdns.conf -b
+
+/bin/php /var/www/htdocs/fw/rokko_boot.php
+
+echo " * Repopulating dev..."
+/sbin/udevadm trigger --attr-match=dev
+/sbin/udevadm settle --timeout=60
+
+# Start Phoenix service        
+# Note: Need to first start mDNS daemon and mount usb filesystem
+if [ -x /sbin/mdnsd ] && [ -x /sbin/phoenix ]; then
+	echo " * Starting Phoenix..."
+	/sbin/mdnsd
+	mount -t usbfs none /proc/bus/usb
+	/sbin/phoenix -f /etc/phoenix.conf &
+fi
+
+if [ -x /usr/bin/Start_cmh.sh ]; then
+	echo " * Starting Home Automation..."
+	/usr/bin/Start_cmh.sh &
+fi
+
+if [ -x /sbin/lld2d ]; then
+	echo " * Starting Microsoft LLTD Responder..."
+	/sbin/lld2d egiga0
+fi
+
+# Check if there is a new disk/degraded raid and put msg in notification db
+/bin/php-cgi -f /usr/htdocs/fw/rokko.php cmd=cl_check_drive_status
+
+if [ -e /test_standby ]; then
+	echo " * Setting drive(s) standby..."
+	echo 2 > /proc/sys/vm/laptop_mode
+	echo 60 > /proc/sys/vm/dirty_ratio
+	echo 1 > /proc/sys/vm/dirty_background_ratio
+	echo 60000 > /proc/sys/vm/dirty_expire_centisecs
+	echo 60000 > /proc/sys/vm/dirty_writeback_centisecs
+	DRIVES=`ls /dev/sd[a-z]`
+	if [ ! -z $DRIVES ]; then
+		for f in $DRIVES; do
+			hdparm -S 241 $f ;
+		done
+	fi
+fi
+
